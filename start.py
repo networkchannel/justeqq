@@ -19,6 +19,17 @@ from telegram.ext import (
 )
 from telegram.error import TelegramError
 import os
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "200 le bot tourne"
+
+def run_web():
+    app.run(host="0.0.0.0", port=8080)
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN = os.getenv("BOT_TOKEN")
