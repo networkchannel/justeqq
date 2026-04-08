@@ -316,12 +316,17 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback))
-    logger.info("Bot démarré ✅")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Lancer le serveur web en parallèle
+    t = threading.Thread(target=run_web)
+    t.start()
+
+    app_bot = Application.builder().token(BOT_TOKEN).build()
+    app_bot.add_handler(CommandHandler("start", start))
+    app_bot.add_handler(CallbackQueryHandler(button_handler))
+    app_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback))
+
+    logger.info("Bot + Web server démarrés ✅")
+    app_bot.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
