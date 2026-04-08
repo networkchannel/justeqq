@@ -8,6 +8,7 @@ import logging
 import random
 import asyncio
 from datetime import datetime, timedelta
+from typing import Optional  # FIX: compatibilité Python 3.9
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
 from telegram.ext import (
     Application,
@@ -22,18 +23,18 @@ import os
 from flask import Flask
 import threading
 
-app = Flask(__name__)
+flask_app = Flask(__name__)  # FIX: renommé pour éviter conflit avec app_bot
 
-@app.route("/")
+@flask_app.route("/")
 def home():
     return "200 le bot tourne"
 
 def run_web():
-    app.run(host="0.0.0.0", port=8080)
+    flask_app.run(host="0.0.0.0", port=8080)
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-PRIVATE_CHANNEL_ID = int(os.getenv("PRIVATE_CHANNEL_ID"))
+PRIVATE_CHANNEL_ID = int(os.getenv("PRIVATE_CHANNEL_ID", "0"))  # FIX: valeur par défaut
 MAX_ATTEMPTS = 3
 RATE_LIMIT_MINUTES = 30
 INVITE_LINK_EXPIRE_HOURS = 1
@@ -45,7 +46,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-user_state: dict[int, dict] = {}
+user_state: dict = {}  # FIX: dict simple sans syntax 3.10+
 
 # ─── DEVINETTES PIÈGES ────────────────────────────────────────────────────────
 DEVINETTES = [
@@ -63,7 +64,7 @@ DEVINETTES = [
 
 
 # ─── TRUST SCORE ───────────────────────────────────────────────────────────────
-def compute_trust_score(user_id: int, username: str | None, first_name: str) -> float:
+def compute_trust_score(user_id: int, username: Optional[str], first_name: str) -> float:  # FIX: Optional[str]
     score = 0.0
 
     if user_id < 100_000_000:
@@ -105,10 +106,6 @@ def trust_label(score: float) -> str:
 
 # ─── CAPTCHA ───────────────────────────────────────────────────────────────────
 def get_captcha(trust_score: float) -> dict:
-    """
-    Score >= 0.4 → addition simple
-    Score <  0.4 → devinette piège
-    """
     if trust_score >= 0.4:
         a = random.randint(1, 20)
         b = random.randint(1, 20)
@@ -128,7 +125,7 @@ def get_captcha(trust_score: float) -> dict:
         }
     else:
         q = random.choice(DEVINETTES)
-        choices = q[1].copy()
+        choices = list(q[1])  # FIX: copie explicite
         random.shuffle(choices)
         return {
             "question": f"🧩 *Question :*\n_{q[0]}_",
@@ -316,8 +313,7 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    # Lancer le serveur web en parallèle
-    t = threading.Thread(target=run_web)
+    t = threading.Thread(target=run_web, daemon=True)  # FIX: daemon=True pour arrêt propre
     t.start()
 
     app_bot = Application.builder().token(BOT_TOKEN).build()
