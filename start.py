@@ -313,8 +313,13 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    t = threading.Thread(target=run_web, daemon=True)  # FIX: daemon=True pour arrêt propre
+    # Flask dans un thread daemon
+    t = threading.Thread(target=run_web, daemon=True)
     t.start()
+
+    # FIX: forcer une event loop propre avant run_polling (requis Python 3.12+)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     app_bot = Application.builder().token(BOT_TOKEN).build()
     app_bot.add_handler(CommandHandler("start", start))
